@@ -2,9 +2,21 @@
 """
 Flexible script to generate HTML from markdown files.
 Can handle single files or multiple files from a directory.
+Creates output files in a designated output folder.
+
 Usage: 
+  # Single file
   python3 generate_html_flexible.py file.md
+  python3 generate_html_flexible.py file.md --output custom_output/
+  python3 generate_html_flexible.py file.md --output report.html
+  
+  # Directory - combined into one HTML file (default)
   python3 generate_html_flexible.py --dir docs/implementation-guidelines
+  python3 generate_html_flexible.py --dir docs/ --output ./html_reports/
+  
+  # Directory - separate HTML files with index navigation
+  python3 generate_html_flexible.py --dir docs/ --separate --output ./html_reports/
+  python3 generate_html_flexible.py --dir docs/ --separate --title "My Documentation"
 """
 
 import os
@@ -227,6 +239,48 @@ def read_multiple_files(directory):
         combined_content.append(file_content)
     
     return "\n\n".join(combined_content), "combined_documents"
+
+def read_multiple_files_separate(directory):
+    """Read multiple markdown files from a directory as separate documents"""
+    dir_path = Path(directory)
+    if not dir_path.exists():
+        print(f"Error: Directory {directory} does not exist")
+        return None
+    
+    # Get all markdown files
+    md_files = sorted(dir_path.glob("*.md"))
+    if not md_files:
+        print(f"No markdown files found in {directory}")
+        return None
+    
+    file_contents = []
+    
+    for filepath in md_files:
+        print(f"Reading {filepath.name}...")
+        with open(filepath, 'r', encoding='utf-8') as f:
+            content = f.read()
+        
+        # Extract title from first heading or use filename
+        title = extract_title_from_markdown(content) or filepath.stem.replace('-', ' ').replace('_', ' ').title()
+        
+        file_contents.append({
+            'path': filepath,
+            'name': filepath.name,
+            'stem': filepath.stem,
+            'content': content,
+            'title': title
+        })
+    
+    return file_contents
+
+def extract_title_from_markdown(content):
+    """Extract the first H1 heading from markdown content"""
+    lines = content.strip().split('\n')
+    for line in lines[:20]:  # Check first 20 lines
+        line = line.strip()
+        if line.startswith('# ') and len(line) > 2:
+            return line[2:].strip()
+    return None
 
 def create_html_document(content, title, include_toc=True):
     """Create complete HTML document with styling"""
@@ -484,12 +538,305 @@ def create_html_document(content, title, include_toc=True):
     
     return html_template
 
+def create_index_html(documents_info, output_dir, collection_title="Markdown Documents Collection"):
+    """Create an index HTML file for all documents."""
+    
+    index_template = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{collection_title} - Index</title>
+    <style>
+        /* Academic index styling */
+        * {{
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }}
+        
+        body {{
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.6;
+            color: #000;
+            background: #f5f5f5;
+            padding: 40px 20px;
+        }}
+        
+        .container {{
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+            border-radius: 8px;
+            overflow: hidden;
+        }}
+        
+        .header {{
+            background: linear-gradient(135deg, #2c3e50 0%, #3498db 100%);
+            color: white;
+            padding: 40px;
+            text-align: center;
+        }}
+        
+        .header h1 {{
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            font-weight: normal;
+        }}
+        
+        .header .subtitle {{
+            font-size: 1.2em;
+            opacity: 0.9;
+            font-style: italic;
+        }}
+        
+        .content {{
+            padding: 40px;
+        }}
+        
+        .description {{
+            font-size: 1.1em;
+            margin-bottom: 40px;
+            text-align: center;
+            color: #555;
+            line-height: 1.8;
+        }}
+        
+        .documents-grid {{
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 30px;
+            margin-top: 30px;
+        }}
+        
+        .document-card {{
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            overflow: hidden;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            background: white;
+        }}
+        
+        .document-card:hover {{
+            transform: translateY(-2px);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+        }}
+        
+        .document-card a {{
+            text-decoration: none;
+            color: inherit;
+            display: block;
+        }}
+        
+        .card-header {{
+            background: #f8f9fa;
+            padding: 20px;
+            border-bottom: 1px solid #dee2e6;
+        }}
+        
+        .card-title {{
+            font-size: 1.2em;
+            font-weight: bold;
+            margin-bottom: 8px;
+            color: #2c3e50;
+        }}
+        
+        .card-meta {{
+            font-size: 0.9em;
+            color: #6c757d;
+            margin-bottom: 5px;
+        }}
+        
+        .card-stats {{
+            font-size: 0.8em;
+            color: #868e96;
+        }}
+        
+        .card-preview {{
+            padding: 20px;
+            background: white;
+            max-height: 150px;
+            overflow: hidden;
+            position: relative;
+        }}
+        
+        .card-preview p {{
+            margin: 0 0 10px 0;
+            color: #555;
+            line-height: 1.4;
+        }}
+        
+        .card-preview::after {{
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 30px;
+            background: linear-gradient(transparent, white);
+        }}
+        
+        .card-footer {{
+            padding: 15px 20px;
+            background: #f8f9fa;
+            border-top: 1px solid #dee2e6;
+            text-align: center;
+        }}
+        
+        .read-more {{
+            background: #3498db;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 4px;
+            text-decoration: none;
+            font-size: 0.9em;
+            font-weight: 500;
+        }}
+        
+        .read-more:hover {{
+            background: #2980b9;
+            text-decoration: none;
+            color: white;
+        }}
+        
+        .stats {{
+            margin-top: 40px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            text-align: center;
+        }}
+        
+        .stats h3 {{
+            margin-bottom: 15px;
+            color: #2c3e50;
+        }}
+        
+        .stat-item {{
+            display: inline-block;
+            margin: 0 20px;
+            padding: 10px;
+        }}
+        
+        .stat-number {{
+            font-size: 2em;
+            font-weight: bold;
+            color: #3498db;
+            display: block;
+        }}
+        
+        .stat-label {{
+            font-size: 0.9em;
+            color: #7f8c8d;
+        }}
+        
+        .back-link {{
+            margin-top: 30px;
+            text-align: center;
+        }}
+        
+        .back-link a {{
+            color: #3498db;
+            text-decoration: none;
+            font-weight: 500;
+        }}
+        
+        @media (max-width: 768px) {{
+            .documents-grid {{
+                grid-template-columns: 1fr;
+            }}
+            
+            .header h1 {{
+                font-size: 2em;
+            }}
+            
+            .container {{
+                margin: 10px;
+            }}
+        }}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>{collection_title}</h1>
+            <div class="subtitle">Document Collection</div>
+        </div>
+        
+        <div class="content">
+            <div class="description">
+                Professional HTML documents generated from markdown files.
+                Each document is optimized for reading and printing with clean typography
+                and structured navigation.
+            </div>
+            
+            <div class="documents-grid">"""
+
+    # Calculate total words for all documents
+    total_words = sum(len(doc['content'].split()) for doc in documents_info)
+    
+    # Add each document card
+    for doc in documents_info:
+        word_count = len(doc['content'].split())
+        
+        # Create a preview from the content (first paragraph or two)
+        preview_content = doc['content'][:300] + "..." if len(doc['content']) > 300 else doc['content']
+        # Convert basic markdown to text for preview
+        preview_text = re.sub(r'#{1,6}\s+', '', preview_content)
+        preview_text = re.sub(r'\*\*(.*?)\*\*', r'\1', preview_text)
+        preview_text = re.sub(r'\*(.*?)\*', r'\1', preview_text)
+        preview_text = re.sub(r'`([^`]+)`', r'\1', preview_text)
+        
+        index_template += f"""
+                <div class="document-card">
+                    <a href="{doc['html_filename']}">
+                        <div class="card-header">
+                            <div class="card-title">{escape_html(doc['title'])}</div>
+                            <div class="card-meta">Source: {doc['source_filename']}</div>
+                            <div class="card-stats">{word_count:,} words</div>
+                        </div>
+                        <div class="card-preview">
+                            <p>{escape_html(preview_text)}</p>
+                        </div>
+                    </a>
+                    <div class="card-footer">
+                        <a href="{doc['html_filename']}" class="read-more">Read Document →</a>
+                    </div>
+                </div>"""
+
+    index_template += f"""
+            </div>
+            
+            <div class="stats">
+                <h3>Collection Statistics</h3>
+                <div class="stat-item">
+                    <span class="stat-number">{len(documents_info)}</span>
+                    <span class="stat-label">Documents</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-number">{total_words:,}</span>
+                    <span class="stat-label">Total Words</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-number">HTML</span>
+                    <span class="stat-label">Format</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>"""
+    
+    return index_template
+
 def main():
     """Main function to generate HTML file"""
     parser = argparse.ArgumentParser(description='Generate HTML from markdown files')
     parser.add_argument('input', nargs='?', help='Input markdown file or directory (with --dir)')
     parser.add_argument('--dir', action='store_true', help='Process all markdown files in the specified directory')
-    parser.add_argument('--output', '-o', help='Output HTML filename (default: auto-generated)')
+    parser.add_argument('--separate', action='store_true', help='Create separate HTML files for each markdown file (only with --dir)')
+    parser.add_argument('--output', '-o', help='Output directory or HTML filename (default: ./html_output/)')
     parser.add_argument('--no-toc', action='store_true', help='Disable table of contents generation')
     parser.add_argument('--title', help='Document title (default: derived from filename)')
     
@@ -498,42 +845,161 @@ def main():
     if not args.input:
         print("Usage: python3 generate_html_flexible.py <file.md> [options]")
         print("       python3 generate_html_flexible.py --dir <directory> [options]")
+        print("       python3 generate_html_flexible.py --dir <directory> --separate [options]")
         return
     
     print("🚀 Generating HTML from markdown...")
     
-    # Read markdown content
-    print("\n📖 Reading markdown files...")
-    if args.dir:
-        markdown_content, base_name = read_multiple_files(args.input)
+    # Handle output path setup
+    if args.output:
+        output_path = Path(args.output)
+        if not args.dir and output_path.suffix == '.html':
+            # Specific filename provided for single file
+            output_file = output_path
+            output_dir = output_file.parent
+        else:
+            # Directory provided
+            output_dir = output_path
     else:
+        # Default: create html_output directory
+        output_dir = Path("html_output")
+    
+    # Create output directory if it doesn't exist
+    output_dir.mkdir(parents=True, exist_ok=True)
+    
+    if args.dir and args.separate:
+        # Process directory with separate files + index
+        print("\n📖 Reading markdown files for separate processing...")
+        file_contents = read_multiple_files_separate(args.input)
+        
+        if not file_contents:
+            return
+        
+        print(f"📁 Output directory: {output_dir.absolute()}")
+        print(f"🔄 Creating separate HTML files...")
+        
+        documents_info = []
+        
+        for file_info in file_contents:
+            print(f"📝 Processing: {file_info['name']}")
+            
+            # Convert to HTML
+            html_content = simple_markdown_to_html(file_info['content'])
+            
+            # Create HTML filename
+            html_filename = f"{file_info['stem']}.html"
+            html_path = output_dir / html_filename
+            
+            # Create complete HTML document
+            include_toc = not args.no_toc
+            complete_html = create_html_document(html_content, file_info['title'], include_toc)
+            
+            # Save HTML file
+            with open(html_path, 'w', encoding='utf-8') as f:
+                f.write(complete_html)
+            
+            print(f"✅ Created: {html_filename}")
+            
+            # Store info for index
+            documents_info.append({
+                'title': file_info['title'],
+                'html_filename': html_filename,
+                'source_filename': file_info['name'],
+                'content': file_info['content']
+            })
+        
+        # Create index.html
+        collection_title = args.title or Path(args.input).name.replace('-', ' ').replace('_', ' ').title()
+        print("📋 Creating index...")
+        index_content = create_index_html(documents_info, output_dir, collection_title)
+        index_path = output_dir / 'index.html'
+        
+        with open(index_path, 'w', encoding='utf-8') as f:
+            f.write(index_content)
+        
+        print("✅ Created: index.html")
+        
+        # Summary
+        total_size = sum(os.path.getsize(output_dir / doc['html_filename']) for doc in documents_info)
+        total_size += os.path.getsize(index_path)
+        
+        print(f"\n🎉 Separate files with index generated successfully!")
+        print(f"📄 Files created: {len(documents_info)} documents + 1 index")
+        print(f"📄 Total size: {total_size / 1024:.1f} KB")
+        print(f"📂 Output directory: {output_dir.absolute()}")
+        print(f"🌐 Open {index_path} in your browser to navigate")
+        
+    elif args.dir:
+        # Process directory with combined file (original behavior)
+        print("\n📖 Reading markdown files for combined processing...")
+        markdown_content, base_name = read_multiple_files(args.input)
+        
+        if not markdown_content:
+            return
+        
+        # Convert to HTML
+        print("\n🔄 Converting markdown to HTML...")
+        html_content = simple_markdown_to_html(markdown_content)
+        
+        # Determine title and output file path
+        title = args.title or base_name.replace('-', ' ').replace('_', ' ').title()
+        output_file = output_dir / f"{base_name}.html"
+        
+        print(f"📁 Output directory: {output_dir.absolute()}")
+        print(f"📄 Output file: {output_file.name}")
+        
+        # Create complete HTML document
+        include_toc = not args.no_toc
+        complete_html = create_html_document(html_content, title, include_toc)
+        
+        # Save HTML file
+        with open(output_file, 'w', encoding='utf-8') as f:
+            f.write(complete_html)
+        
+        file_size = os.path.getsize(output_file) / 1024
+        
+        print(f"\n✅ Combined HTML file generated successfully: {output_file}")
+        print(f"📄 File size: {file_size:.1f} KB")
+        print(f"📑 Title: {title}")
+        print(f"📑 Table of Contents: {'Included' if include_toc else 'Disabled'}")
+        
+    else:
+        # Process single file (original behavior)
+        print("\n📖 Reading markdown file...")
         markdown_content, base_name = read_single_file(args.input)
-    
-    if not markdown_content:
-        return
-    
-    # Convert to HTML
-    print("\n🔄 Converting markdown to HTML...")
-    html_content = simple_markdown_to_html(markdown_content)
-    
-    # Determine title and output filename
-    title = args.title or base_name.replace('-', ' ').replace('_', ' ').title()
-    output_file = args.output or f"{base_name}.html"
-    
-    # Create complete HTML document
-    include_toc = not args.no_toc
-    complete_html = create_html_document(html_content, title, include_toc)
-    
-    # Save HTML file
-    with open(output_file, 'w', encoding='utf-8') as f:
-        f.write(complete_html)
-    
-    file_size = os.path.getsize(output_file) / 1024
-    
-    print(f"\n✅ HTML file generated successfully: {output_file}")
-    print(f"📄 File size: {file_size:.1f} KB")
-    print(f"📑 Title: {title}")
-    print(f"📑 Table of Contents: {'Included' if include_toc else 'Disabled'}")
+        
+        if not markdown_content:
+            return
+        
+        # Convert to HTML
+        print("\n🔄 Converting markdown to HTML...")
+        html_content = simple_markdown_to_html(markdown_content)
+        
+        # Determine title and output file path
+        title = args.title or base_name.replace('-', ' ').replace('_', ' ').title()
+        
+        if args.output and Path(args.output).suffix == '.html':
+            output_file = Path(args.output)
+        else:
+            output_file = output_dir / f"{base_name}.html"
+        
+        print(f"📁 Output directory: {output_dir.absolute()}")
+        print(f"📄 Output file: {output_file.name}")
+        
+        # Create complete HTML document
+        include_toc = not args.no_toc
+        complete_html = create_html_document(html_content, title, include_toc)
+        
+        # Save HTML file
+        with open(output_file, 'w', encoding='utf-8') as f:
+            f.write(complete_html)
+        
+        file_size = os.path.getsize(output_file) / 1024
+        
+        print(f"\n✅ HTML file generated successfully: {output_file}")
+        print(f"📄 File size: {file_size:.1f} KB")
+        print(f"📑 Title: {title}")
+        print(f"📑 Table of Contents: {'Included' if include_toc else 'Disabled'}")
     
     print("\n🖨️  To convert to PDF:")
     print("1. Open the HTML file in your browser (Chrome, Safari, Firefox)")
@@ -543,9 +1009,7 @@ def main():
     print("   - Paper size: A4")
     print("   - Margins: Default or Minimum")
     print("   - Include background graphics: Yes")
-    print(f"5. Save as '{base_name}.pdf'")
-    
-    print(f"\n📂 HTML file location: {os.path.abspath(output_file)}")
+    print("5. Save as PDF")
 
 if __name__ == "__main__":
     main()

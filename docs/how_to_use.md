@@ -46,15 +46,42 @@ python3 generate_html.py
 ---
 
 ## 4. generate_html_flexible.py
-**Purpose:** Flexible script to generate HTML from markdown files (single file or directory).
+**Purpose:** Flexible script to generate HTML from markdown files with multiple processing modes. Creates organized output in designated folders.
 
 **Usage:**
 ```
+# Single file (creates html_output/ folder by default)
 python3 generate_html_flexible.py <file.md>
+
+# Single file with custom output directory
+python3 generate_html_flexible.py <file.md> --output ./reports/
+
+# Single file with specific output filename
+python3 generate_html_flexible.py <file.md> --output ./reports/custom_report.html
+
+# Directory - combined into one HTML file (default)
 python3 generate_html_flexible.py --dir <directory>
+
+# Directory - separate HTML files with index navigation
+python3 generate_html_flexible.py --dir <directory> --separate
+
+# Directory with custom output and title
+python3 generate_html_flexible.py --dir <directory> --separate --output ./html_reports/ --title "My Documentation"
 ```
-- `<file.md>`: Convert a single markdown file to HTML.
-- `--dir <directory>`: Convert all markdown files in a directory.
+
+**Options:**
+- `--output` or `-o`: Output directory or specific HTML filename
+- `--separate`: Create individual HTML files with index navigation (only with --dir)
+- `--no-toc`: Disable table of contents generation
+- `--title`: Custom document title
+
+**Features:**
+- **Single file mode**: Converts one markdown file to HTML
+- **Combined mode**: Merges all files in directory into one HTML document
+- **Separate mode**: Creates individual HTML files + index page for navigation
+- Creates organized output folders automatically
+- Generates table of contents with navigation
+- Professional styling optimized for PDF conversion
 
 ---
 

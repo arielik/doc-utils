@@ -6,7 +6,7 @@ A collection of Python utilities for managing and converting different document 
 - Convert ASCII art diagrams to HTML
 - Convert Mermaid diagrams to standalone HTML
 - Generate combined HTML from markdown guidelines
-- Flexible markdown-to-HTML conversion (single file or directory)
+- Flexible markdown-to-HTML conversion with multiple modes and index generation
 - Generate Kindle-ready EPUB documents from markdown
 - Create master volumes from multiple chapter files (HTML and EPUB)
 
@@ -14,7 +14,7 @@ A collection of Python utilities for managing and converting different document 
 - `convert_ascii_to_html.py`: ASCII art to HTML converter
 - `convert_mermaid_to_html.py`: Mermaid diagrams to HTML
 - `generate_html.py`: Combine guideline markdowns into one HTML
-- `generate_html_flexible.py`: Flexible markdown to HTML
+- `generate_html_flexible.py`: Flexible markdown to HTML with multiple modes and index navigation
 - `generate_kindle.py`: Markdown to EPUB for Kindle
 - `create_master_volume.py`: Create unified master volumes from chapter files (both HTML and EPUB)
 
